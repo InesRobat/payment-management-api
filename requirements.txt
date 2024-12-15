@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pandas
+pymongo
+pandas
+python-multipart
+pydantic[email]
+watchdog
+fastapi[all]
