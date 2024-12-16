@@ -17,12 +17,12 @@ payments_collection = db["payments"]
 # Add CORS middleware
 origins = [
     "http://localhost:4200",
-    "https://payment-management-ui.vercel.app/" 
+    "https://payment-management-ui.vercel.app" 
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=["*"],  # Allow all origins temporarily for testing
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
