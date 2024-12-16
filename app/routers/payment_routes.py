@@ -9,11 +9,11 @@ router = APIRouter()
 async def fetch_payments(
     search: Optional[str] = Query(''),
     page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1),
+    page_size: int = Query(10, ge=1)
 ):
     # Use the search, page, and page_size parameters to fetch data
     result = get_payments(db.payments,search, page, page_size)
-    total = len(result)
+    total = len(list(db.payments.find({})))
 
     return {"items": result, "total": total}
 
