@@ -16,7 +16,8 @@ payments_collection = db["payments"]
 
 # Add CORS middleware
 origins = [
-    "http://localhost:4200",  # Angular frontend URL during development
+    "http://localhost:4200",
+    "https://payment-management-ui.vercel.app/" 
 ]
 
 app.add_middleware(
