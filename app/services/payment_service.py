@@ -188,38 +188,46 @@ from pymongo.collection import Collection
 def format_number(value):
         return "{:,.0f}".format(value).replace(",", " ")
 def get_payment_stats(db: Collection):
-    total_payments = len(list(db.find({})))
+    try:
+        # Aggregation pipeline to calculate required stats in a single query
+        pipeline = [
+            {
+                "$group": {
+                    "_id": None,  # Group all documents together
+                    "total_payments": {"$sum": 1},  # Count of all payments
+                    "total_due_amount": {"$sum": {"$toDouble": "$total_due"}},  # Sum of total_due field
+                    "overdue_payments": {
+                        "$sum": {"$cond": [{"$eq": ["$payee_payment_status", "overdue"]}, 1, 0]}
+                    },
+                    "pending_payments": {
+                        "$sum": {"$cond": [{"$eq": ["$payee_payment_status", "pending"]}, 1, 0]}
+                    },
+                    "completed_payments": {
+                        "$sum": {"$cond": [{"$eq": ["$payee_payment_status", "completed"]}, 1, 0]}
+                    }
+                }
+            }
+        ]
+        
+        result = db.aggregate(pipeline)
+        stats = list(result)
 
-    # Manually calculating the total due amount using db.find()
-    total_due_amount = 0
-    payments_cursor = db.find({}, {"total_due": 1})  # Only retrieve the total_due field
+        # If there are results, extract the stats from the aggregation result
+        if stats:
+            stats = stats[0]
+            response = [
+                {"name": "Total Payments", "value": format_number(stats["total_payments"])},
+                {"name": "Total Due Amount", "value": format_number(round(stats["total_due_amount"], 2))},
+                {"name": "Overdue Payments", "value": format_number(stats["overdue_payments"])},
+                {"name": "Pending Payments", "value": format_number(stats["pending_payments"])},
+                {"name": "Completed Payments", "value": format_number(stats["completed_payments"])}
+            ]
+            return response
+        else:
+            raise HTTPException(status_code=500, detail="Failed to retrieve payment stats")
 
-    for payment in payments_cursor:
-        if payment.get("total_due"):
-            try:
-                total_due_amount += float(payment["total_due"])  # Ensure it's a numeric type
-            except ValueError:
-                pass  # In case of invalid values, just skip
-
-
-    # Calculate the number of overdue payments
-    overdue_payments = len(list(db.find({"payee_payment_status": "overdue"})))
-
-    # Calculate the number of pending payments
-    pending_payments = len(list(db.find({"payee_payment_status": "pending"})))
-
-    completed_payments = len(list(db.find({"payee_payment_status": "completed"})))
-
-    # Format the response as a table-like structure
-    response = [
-        {"name": "Total Payments", "value": format_number(total_payments)},
-        {"name": "Total Due Amount", "value": format_number(round(total_due_amount, 2))},
-        {"name": "Overdue Payments", "value": format_number(overdue_payments)},
-        {"name": "Pending Payments", "value": format_number(pending_payments)},
-        {"name": "Completed Payments", "value": format_number(completed_payments)}
-    ]
-
-    return response
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error while calculating stats: {str(e)}")
 
 
 # Existing function for payment status distribution
